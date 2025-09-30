@@ -1,0 +1,20 @@
+#ls
+#cd /home
+#ls /tmp
+#foobar
+#exit
+ls
+cd folder1
+ls
+cd folder2
+ls
+cd folder3
+ls
+cd ..
+cd ..
+cd ..
+ls
+cd non_existent
+ls
+foobar
+exit
