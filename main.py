@@ -112,16 +112,17 @@ def repl():
 
 
 if __name__ == "__main__":
-    # Читаем аргументы командной строки
-    if len(sys.argv) < 2:
-        print("Использование: python emulator.py <VFS_PATH> [PROMPT] [SCRIPT_PATH]")
-        sys.exit(1)
-
-    VFS_PATH = sys.argv[1]
-    if len(sys.argv) > 2:
-        CUSTOM_PROMPT = sys.argv[2]
-    if len(sys.argv) > 3:
-        SCRIPT_PATH = sys.argv[3]
+    # Определяем параметры (из sys.argv или по умолчанию для IDLE)
+    if len(sys.argv) > 1:
+        # запуск через терминал
+        VFS_PATH = sys.argv[1]
+        CUSTOM_PROMPT = sys.argv[2] if len(sys.argv) > 2 else "$"
+        SCRIPT_PATH = sys.argv[3] if len(sys.argv) > 3 else None
+    else:
+        # запуск через IDLE (аргументы не передаются)
+        VFS_PATH = "vfs_test.zip"
+        CUSTOM_PROMPT = "Idle$"
+        SCRIPT_PATH = "script.txt"
 
     # Отладочный вывод
     print("=== Конфигурация эмулятора ===")

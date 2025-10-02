@@ -1,0 +1,13 @@
+#ls
+#cd /home
+#ls /tmp
+#foobar
+#exit
+ls
+cd folder1
+ls
+cd awe
+ls
+ls
+test123123
+exit
