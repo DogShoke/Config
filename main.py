@@ -3,11 +3,17 @@ import sys
 import getpass
 import socket
 import shlex
+import zipfile
+import base64
 
 # Глобальные переменные для конфигурации
 VFS_PATH = None
 CUSTOM_PROMPT = None
 SCRIPT_PATH = None
+
+# Глобальные переменные VFS
+VFS = {}
+VFS_CWD = []  # текущая папка внутри VFS
 
 
 def make_prompt() -> str:
@@ -27,15 +33,76 @@ def make_prompt() -> str:
     return f"{user}@{host}:{short}$ "
 
 
+def load_vfs(zip_path):
+    """Загрузить ZIP VFS в память"""
+    global VFS
+    if not os.path.exists(zip_path):
+        print(f"Ошибка: VFS файл '{zip_path}' не найден.")
+        return False
+    try:
+        with zipfile.ZipFile(zip_path, 'r') as zf:
+            VFS = {}
+            for name in zf.namelist():
+                if name.endswith("/"):
+                    continue  # пропускаем пустые папки
+                parts = name.strip("/").split("/")
+                current = VFS
+                for p in parts[:-1]:
+                    current = current.setdefault(p, {})
+                data = zf.read(name)
+                try:
+                    current[parts[-1]] = data.decode('utf-8')
+                except UnicodeDecodeError:
+                    current[parts[-1]] = base64.b64encode(data).decode('utf-8')
+        return True
+    except zipfile.BadZipFile:
+        print(f"Ошибка: VFS файл '{zip_path}' не является корректным ZIP архивом.")
+        return False
+
+
+def get_vfs_node(path_list):
+    """Вернуть объект (папка или файл) по пути внутри VFS"""
+    current = VFS
+    for p in path_list:
+        if isinstance(current, dict) and p in current:
+            current = current[p]
+        else:
+            return None
+    return current
+
+
 def cmd_ls(args):
-    print("ls ", *args)
+    """Вывод содержимого текущей папки VFS"""
+    node = get_vfs_node(VFS_CWD)
+    if node is None:
+        print("Ошибка: путь не найден в VFS")
+        return
+    if not isinstance(node, dict):
+        print("Ошибка: текущий путь не является директорией.")
+        return
+    for name, value in node.items():
+        if isinstance(value, dict):
+            print(f"{name}/")
+        else:
+            print(name)
 
 
 def cmd_cd(args):
-    if len(args) > 1:
-        print("Ошибка: cd принимает не более одного аргумента.")
+    """Переход по папкам VFS"""
+    global VFS_CWD
+    if len(args) != 1:
+        print("Ошибка: cd принимает ровно один аргумент.")
         return
-    print("cd ", *args)
+    target = args[0]
+    if target == "..":
+        if VFS_CWD:
+            VFS_CWD.pop()
+    else:
+        node = get_vfs_node(VFS_CWD + [target])
+        if node is None or not isinstance(node, dict):
+            print(f"Ошибка: папка '{target}' не найдена.")
+        else:
+            VFS_CWD.append(target)
 
 
 def execute_command(cmd: str, args: list):
@@ -112,17 +179,16 @@ def repl():
 
 
 if __name__ == "__main__":
-    # Определяем параметры (из sys.argv или по умолчанию для IDLE)
-    if len(sys.argv) > 1:
-        # запуск через терминал
-        VFS_PATH = sys.argv[1]
-        CUSTOM_PROMPT = sys.argv[2] if len(sys.argv) > 2 else "$"
-        SCRIPT_PATH = sys.argv[3] if len(sys.argv) > 3 else None
-    else:
-        # запуск через IDLE (аргументы не передаются)
-        VFS_PATH = "vfs_test.zip"
-        CUSTOM_PROMPT = "Idle$"
-        SCRIPT_PATH = "script.txt"
+    # Читаем аргументы командной строки
+    if len(sys.argv) < 2:
+        print("Использование: python emulator.py <VFS_PATH> [PROMPT] [SCRIPT_PATH]")
+        sys.exit(1)
+
+    VFS_PATH = sys.argv[1]
+    if len(sys.argv) > 2:
+        CUSTOM_PROMPT = sys.argv[2]
+    if len(sys.argv) > 3:
+        SCRIPT_PATH = sys.argv[3]
 
     # Отладочный вывод
     print("=== Конфигурация эмулятора ===")
@@ -130,6 +196,10 @@ if __name__ == "__main__":
     print(f"CUSTOM_PROMPT: {CUSTOM_PROMPT}")
     print(f"SCRIPT_PATH  : {SCRIPT_PATH}")
     print("==============================")
+
+    # Загрузка VFS
+    if not load_vfs(VFS_PATH):
+        sys.exit(1)
 
     # Если указан стартовый скрипт — выполнить его
     if SCRIPT_PATH:
