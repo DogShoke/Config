@@ -1,0 +1,19 @@
+ls
+cd folder1
+ls
+cd non_existent
+cd ..
+ls
+whoami
+tac file_root.txt
+tac nofile.txt
+mkdir new_folder
+ls
+mkdir folder1
+cd new_folder
+mkdir subfolder
+ls
+cd ..
+ls
+help
+exit

@@ -3,12 +3,11 @@ import sys
 import zipfile
 
 # Эмулятор командной строки UNIX
-# Этап 4: команды ls, cd, whoami, tac
+# Этап 4 + Этап 5: команды ls, cd, whoami, tac, mkdir, help
 # с виртуальной файловой системой и отображением реального пути
 
 class Emulator:
     def __init__(self, vfs_path=None):
-        # Инициализация параметров
         self.vfs = {}  # словарь: путь → содержимое файла
         self.cwd = "/"  # текущая директория в VFS
         self.username = os.getenv("USER", "user")  # имя пользователя
@@ -27,20 +26,18 @@ class Emulator:
 
     # Формирование строки приглашения (реальный путь)
     def get_prompt(self):
-        # "/" в VFS отображается как домашняя директория
         if self.cwd == "/":
             path = self.home
         else:
             path = os.path.join(self.home, self.cwd.strip("/"))
         return f"{path} $ "
 
-    # Команда ls — показать содержимое текущей папки
+    # Команда ls
     def cmd_ls(self, args):
         found = set()
         prefix = self.cwd.strip("/") + "/"
         if prefix == "/":
             prefix = ""
-
         for name in self.vfs.keys():
             if name.startswith(prefix):
                 rest = name[len(prefix):]
@@ -48,14 +45,13 @@ class Emulator:
                     found.add(rest.split("/")[0] + "/")
                 else:
                     found.add(rest)
-
         if found:
             for item in sorted(found):
                 print(item)
         else:
             print("Пусто")
 
-    # Команда cd — переход по папкам VFS
+    # Команда cd
     def cmd_cd(self, args):
         if not args:
             print("Ошибка: не указана папка.")
@@ -76,11 +72,11 @@ class Emulator:
             else:
                 print(f"Ошибка: папка '{target}' не найдена.")
 
-    # Команда whoami — вывести имя пользователя
+    # Команда whoami
     def cmd_whoami(self, args):
         print(self.username)
 
-    # Команда tac — вывести файл в обратном порядке
+    # Команда tac
     def cmd_tac(self, args):
         if not args:
             print("Ошибка: не указан файл.")
@@ -97,6 +93,35 @@ class Emulator:
         for line in reversed(lines):
             print(line)
 
+    # Новая команда mkdir
+    def cmd_mkdir(self, args):
+        if not args:
+            print("Ошибка: не указана папка.")
+            return
+        folder = args[0].strip("/")
+        path = (self.cwd.strip("/") + "/" + folder).strip("/") + "/"
+        if any(name.startswith(path) for name in self.vfs.keys()):
+            print(f"Ошибка: папка '{folder}' уже существует.")
+        else:
+            self.vfs[path] = ""  # пустая "папка" в VFS
+            print(f"Папка '{folder}' создана.")
+
+    # Новая команда help
+    def cmd_help(self, args):
+        commands = {
+            "ls": "Показать содержимое текущей папки",
+            "cd <folder>": "Перейти в папку",
+            "cd ..": "Подняться на уровень выше",
+            "whoami": "Показать имя пользователя",
+            "tac <file>": "Вывести файл в обратном порядке",
+            "mkdir <folder>": "Создать новую папку в VFS",
+            "help": "Показать список команд",
+            "exit": "Выйти из эмулятора"
+        }
+        print("Доступные команды:")
+        for cmd, desc in commands.items():
+            print(f"{cmd}: {desc}")
+
     # Выполнение отдельной команды
     def execute(self, line):
         parts = line.strip().split()
@@ -112,6 +137,10 @@ class Emulator:
             self.cmd_whoami(args)
         elif cmd == "tac":
             self.cmd_tac(args)
+        elif cmd == "mkdir":
+            self.cmd_mkdir(args)
+        elif cmd == "help":
+            self.cmd_help(args)
         elif cmd == "exit":
             print("Выход.")
             sys.exit(0)
