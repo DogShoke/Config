@@ -1,0 +1,11 @@
+# Проверка ls, cd, whoami и tac
+ls
+cd folder1
+ls
+whoami
+tac file1.txt
+cd folder2
+tac file2.txt
+cd non_existent
+tac nofile.txt
+exit
